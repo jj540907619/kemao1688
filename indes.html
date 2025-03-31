@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI智能选箱助手</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .input-group { margin: 15px 0; }
+        input, select { padding: 10px; margin: 5px; width: 180px; border: 1px solid #ddd; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result-item { margin: 15px 0; padding: 15px; border: 1px solid #eee; border-radius: 5px; }
+        .dimension { color: #666; font-size: 0.9em; }
+        .warning { color: #dc3545; }
+        .success { color: #28a745; }
+    </style>
+</head>
+<body>
+    <h2>AI智能选箱助手【推荐箱型均为“东莞市科茂纸品有限公司”现货库存】</h2>
+    <div class="input-group">
+        <select id="unit">
+            <option value="mm">毫米</option>
+            <option value="cm">厘米</option>
+        </select>
+    </div>
+    <div class="input-group">
+        <input type="number" id="length" placeholder="长度" step="1" required>
+        <input type="number" id="width" placeholder="宽度" step="1" required>
+        <input type="number" id="height" placeholder="高度" step="1" required>
+    </div>
+    <button onclick="calculate()">智能推荐箱型</button>
+    <div id="results"></div>
+
+    <script>
+        // 完整尺寸数据库（单位：毫米）
+        const boxes = [
+           // 半高箱系列
+            {name: "6号半高箱", dimensions: [260,150,90]},
+            {name: "7号半高箱", dimensions: [230,130,80]},
+            {name: "8号半高箱", dimensions: [210,110,70]},
+            {name: "9号半高箱", dimensions: [195,105,66]},
+            {name: "10号半高箱", dimensions: [175,95,60]},
+
+ // 飞机盒系列
+            {name: "T1 飞机盒", dimensions: [150,150,50]},
+            {name: "T2 飞机盒", dimensions: [200,140,40]},
+            {name: "T3 飞机盒", dimensions: [270,165,50]},
+            {name: "T4 飞机盒", dimensions: [250,200,70]},
+            {name: "T5 飞机盒", dimensions: [300,215,50]},
+            {name: "T6 飞机盒", dimensions: [360,300,60]},
+            {name: "T7 飞机盒", dimensions: [360,250,120]},
+            {name: "T8 飞机盒", dimensions: [400,285,60]},
+            {name: "T9 飞机盒", dimensions: [330,230,50]},
+            {name: "T10 飞机盒", dimensions: [370,270,70]},
+            {name: "T11 飞机盒", dimensions: [245,205,35]},
+            {name: "T12 飞机盒", dimensions: [360,160,40]},
+            {name: "E13 飞机盒", dimensions: [220,150,40]},
+            {name: "E14 飞机盒", dimensions: [200,130,30]},
+            {name: "E15 飞机盒", dimensions: [180,110,30]},
+            {name: "E16 飞机盒", dimensions: [150,100,40]},
+            {name: "E17 飞机盒", dimensions: [200,130,60]},
+            {name: "E18 飞机盒", dimensions: [190,110,30]},
+            {name: "E19 飞机盒", dimensions: [160,150,40]},
+
+            // 标准箱系列
+            {name: "11号", dimensions: [145,85,105]},
+            {name: "10号", dimensions: [175,95,115]},
+            {name: "9号", dimensions: [195,105,135]},
+            {name: "8号", dimensions: [210,110,140]},
+            {name: "7号", dimensions: [230,130,160]},
+            {name: "6号", dimensions: [260,150,180]},
+            {name: "5号", dimensions: [290,170,190]},
+            {name: "4号", dimensions: [350,190,230]},
+            {name: "3号", dimensions: [430,210,270]},
+            {name: "2号", dimensions: [530,230,290]},
+            {name: "1号", dimensions: [530,290,370]},
+
+            // 字母系列
+            {name: "B50", dimensions: [500,400,400]},
+            {name: "B60", dimensions: [600,400,500]},
+            {name: "C40", dimensions: [400,300,300]},
+            {name: "C50", dimensions: [500,300,300]},
+            {name: "K50", dimensions: [500,300,400]},
+            {name: "F60", dimensions: [600,500,500]},
+            {name: "E60", dimensions: [600,400,400]},
+            {name: "C60", dimensions: [600,300,300]},
+            {name: "K40", dimensions: [400,300,400]},
+            {name: "H50", dimensions: [500,400,300]},
+            {name: "H40", dimensions: [400,400,200]},
+            {name: "H35", dimensions: [350,250,250]},
+            
+            // 正方体系列
+            {name: "正200", dimensions: [200,200,200]},
+            {name: "正250", dimensions: [250,250,250]},
+            {name: "正300", dimensions: [300,300,300]},
+            {name: "正350", dimensions: [350,350,350]},
+            {name: "正400", dimensions: [400,400,400]},
+            {name: "正450", dimensions: [450,450,450]},
+            {name: "正500", dimensions: [500,500,500]},
+            {name: "正550", dimensions: [550,550,550]},
+            {name: "正570", dimensions: [570,570,570]},
+            {name: "正600", dimensions: [600,600,600]},
+
+            // 特殊箱型
+            {name: "G35", dimensions: [350,350,150]},
+            {name: "G25", dimensions: [250,250,150]},
+            {name: "G20", dimensions: [200,200,150]},
+            {name: "B70", dimensions: [700,500,500]},
+            {name: "B80", dimensions: [800,500,600]},
+            {name: "B90", dimensions: [900,600,700]},
+
+            // 长宽高组合系列（严格保持原始输入顺序）
+            {name: "长35×宽30×高30", dimensions: [350,300,300]},
+            {name: "长35×宽30×高35", dimensions: [350,300,350]},
+            {name: "长35×宽35×高30", dimensions: [350,350,300]},
+            {name: "长40×宽30×高30", dimensions: [400,300,300]},
+            {name: "长40×宽30×高35", dimensions: [400,300,350]},
+            {name: "长40×宽30×高40", dimensions: [400,300,400]},
+            {name: "长40×宽35×高30", dimensions: [400,350,300]},
+            {name: "长40×宽35×高35", dimensions: [400,350,350]},
+            {name: "长40×宽35×高40", dimensions: [400,350,400]},
+            {name: "长40×宽40×高30", dimensions: [400,400,300]},
+            {name: "长40×宽40×高35", dimensions: [400,400,350]},
+            {name: "长45×宽30×高30", dimensions: [450,300,300]},
+            {name: "长45×宽30×高35", dimensions: [450,300,350]},
+            {name: "长45×宽30×高40", dimensions: [450,300,400]},
+            {name: "长45×宽30×高45", dimensions: [450,300,450]},
+            {name: "长45×宽35×高30", dimensions: [450,350,300]},
+            {name: "长45×宽35×高35", dimensions: [450,350,350]},
+            {name: "长45×宽35×高40", dimensions: [450,350,400]},
+            {name: "长45×宽35×高45", dimensions: [450,350,450]},
+            {name: "长45×宽40×高30", dimensions: [450,400,300]},
+            {name: "长45×宽40×高35", dimensions: [450,400,350]},
+            {name: "长45×宽40×高40", dimensions: [450,400,400]},
+            {name: "长45×宽40×高45", dimensions: [450,400,450]},
+            {name: "长45×宽45×高30", dimensions: [450,450,300]},
+            {name: "长45×宽45×高35", dimensions: [450,450,350]},
+            {name: "长45×宽45×高40", dimensions: [450,450,400]},
+            {name: "长50×宽30×高30", dimensions: [500,300,300]},
+            {name: "长50×宽30×高35", dimensions: [500,300,350]},
+            {name: "长50×宽30×高40", dimensions: [500,300,400]},
+            {name: "长50×宽30×高45", dimensions: [500,300,450]},
+            {name: "长50×宽30×高50", dimensions: [500,300,500]},
+            {name: "长50×宽35×高30", dimensions: [500,350,300]},
+            {name: "长50×宽35×高35", dimensions: [500,350,350]},
+            {name: "长50×宽35×高40", dimensions: [500,350,400]},
+            {name: "长50×宽35×高45", dimensions: [500,350,450]},
+            {name: "长50×宽35×高50", dimensions: [500,350,500]},
+            {name: "长50×宽40×高30", dimensions: [500,400,300]},
+            {name: "长50×宽40×高35", dimensions: [500,400,350]},
+            {name: "长50×宽40×高40", dimensions: [500,400,400]},
+            {name: "长50×宽40×高45", dimensions: [500,400,450]},
+            {name: "长50×宽40×高50", dimensions: [500,400,500]},
+            {name: "长50×宽45×高30", dimensions: [500,450,300]},
+            {name: "长50×宽45×高35", dimensions: [500,450,350]},
+            {name: "长50×宽45×高40", dimensions: [500,450,400]},
+            {name: "长50×宽45×高45", dimensions: [500,450,450]},
+            {name: "长50×宽45×高50", dimensions: [500,450,500]},
+            {name: "长50×宽50×高30", dimensions: [500,500,300]},
+            {name: "长50×宽50×高35", dimensions: [500,500,350]},
+            {name: "长50×宽50×高40", dimensions: [500,500,400]},
+            {name: "长50×宽50×高45", dimensions: [500,500,450]},
+            {name: "长55×宽30×高30", dimensions: [550,300,300]},
+            {name: "长55×宽30×高35", dimensions: [550,300,350]},
+            {name: "长55×宽30×高40", dimensions: [550,300,400]},
+            {name: "长55×宽30×高45", dimensions: [550,300,450]},
+            {name: "长55×宽30×高50", dimensions: [550,300,500]},
+            {name: "长55×宽30×高55", dimensions: [550,300,550]},
+            {name: "长55×宽35×高30", dimensions: [550,350,300]},
+            {name: "长55×宽35×高35", dimensions: [550,350,350]},
+            {name: "长55×宽35×高40", dimensions: [550,350,400]},
+            {name: "长55×宽35×高45", dimensions: [550,350,450]},
+            {name: "长55×宽35×高50", dimensions: [550,350,500]},
+            {name: "长55×宽35×高55", dimensions: [550,350,550]},
+            {name: "长55×宽40×高30", dimensions: [550,400,300]},
+            {name: "长55×宽40×高35", dimensions: [550,400,350]},
+            {name: "长55×宽40×高40", dimensions: [550,400,400]},
+            {name: "长55×宽40×高45", dimensions: [550,400,450]},
+            {name: "长55×宽40×高50", dimensions: [550,400,500]},
+            {name: "长55×宽40×高55", dimensions: [550,400,550]},
+            {name: "长55×宽45×高30", dimensions: [550,450,300]},
+            {name: "长55×宽45×高35", dimensions: [550,450,350]},
+            {name: "长55×宽45×高40", dimensions: [550,450,400]},
+            {name: "长55×宽45×高45", dimensions: [550,450,450]},
+            {name: "长55×宽45×高50", dimensions: [550,450,500]},
+            {name: "长55×宽45×高55", dimensions: [550,450,550]},
+            {name: "长55×宽50×高30", dimensions: [550,500,300]},
+            {name: "长55×宽50×高35", dimensions: [550,500,350]},
+            {name: "长55×宽50×高40", dimensions: [550,500,400]},
+            {name: "长55×宽50×高45", dimensions: [550,500,450]},
+            {name: "长55×宽50×高50", dimensions: [550,500,500]},
+            {name: "长55×宽50×高55", dimensions: [550,500,550]},
+            {name: "长55×宽55×高30", dimensions: [550,550,300]},
+            {name: "长55×宽55×高35", dimensions: [550,550,350]},
+            {name: "长55×宽55×高40", dimensions: [550,550,400]},
+            {name: "长55×宽55×高45", dimensions: [550,550,450]},
+            {name: "长55×宽55×高50", dimensions: [550,550,500]},
+            {name: "长60×宽30×高30", dimensions: [600,300,300]},
+            {name: "长60×宽30×高35", dimensions: [600,300,350]},
+            {name: "长60×宽30×高40", dimensions: [600,300,400]},
+            {name: "长60×宽30×高45", dimensions: [600,300,450]},
+            {name: "长60×宽30×高50", dimensions: [600,300,500]},
+            {name: "长60×宽35×高30", dimensions: [600,350,300]},
+            {name: "长60×宽35×高35", dimensions: [600,350,350]},
+            {name: "长60×宽35×高40", dimensions: [600,350,400]},
+            {name: "长60×宽35×高45", dimensions: [600,350,450]},
+            {name: "长60×宽35×高50", dimensions: [600,350,500]},
+            {name: "长60×宽40×高30", dimensions: [600,400,300]},
+            {name: "长60×宽40×高35", dimensions: [600,400,350]},
+            {name: "长60×宽40×高40", dimensions: [600,400,400]},
+            {name: "长60×宽40×高45", dimensions: [600,400,450]},
+            {name: "长60×宽40×高50", dimensions: [600,400,500]},
+            {name: "长60×宽45×高30", dimensions: [600,450,300]},
+            {name: "长60×宽45×高35", dimensions: [600,450,350]},
+            {name: "长60×宽45×高40", dimensions: [600,450,400]},
+            {name: "长60×宽45×高45", dimensions: [600,450,450]},
+            {name: "长60×宽45×高50", dimensions: [600,450,500]},
+            {name: "长60×宽50×高30", dimensions: [600,500,300]},
+            {name: "长60×宽50×高35", dimensions: [600,500,350]},
+            {name: "长60×宽50×高40", dimensions: [600,500,400]},
+            {name: "长60×宽50×高45", dimensions: [600,500,450]},
+            {name: "长60×宽55×高30", dimensions: [600,550,300]},
+            {name: "长60×宽55×高35", dimensions: [600,550,350]},
+            {name: "长60×宽55×高40", dimensions: [600,550,400]},
+            {name: "长60×宽55×高45", dimensions: [600,550,450]},
+            {name: "长60×宽55×高50", dimensions: [600,550,500]},
+            {name: "长60×宽60×高30", dimensions: [600,600,300]},
+            {name: "长60×宽60×高35", dimensions: [600,600,350]},
+            {name: "长60×宽60×高40", dimensions: [600,600,400]},
+            {name: "长60×宽60×高45", dimensions: [600,600,450]},
+            {name: "长60×宽60×高50", dimensions: [600,600,500]},
+            {name: "长60×宽60×高55", dimensions: [600,600,550]},
+        ];
+
+        function calculate() {
+            // 获取输入值
+            const unit = document.getElementById('unit').value;
+            let length = parseFloat(document.getElementById('length').value);
+            let width = parseFloat(document.getElementById('width').value);
+            let height = parseFloat(document.getElementById('height').value);
+
+            // 验证输入
+            if ([length, width, height].some(v => isNaN(v) || v <= 0)) {
+                showError("请输入有效的正数值");
+                return;
+            }
+
+            // 单位转换
+            if (unit === 'cm') {
+                length *= 10;
+                width *= 10;
+                height *= 10;
+            }
+
+            // 处理商品尺寸（保持原始顺序）
+            const product = [length, width, height];
+            const productSorted = [...product].sort((a, b) => a - b);
+            
+            // 寻找合适箱型
+            const suitableBoxes = boxes.map(box => {
+                const sortedBoxDims = [...box.dimensions].sort((a, b) => a - b);
+                const fits = productSorted.every((dim, i) => dim <= sortedBoxDims[i]);
+                const volume = sortedBoxDims.reduce((a, b) => a * b, 1);
+                
+                return {
+                    ...box,
+                    sortedDimensions: sortedBoxDims,
+                    originalDimensions: box.dimensions,
+                    fits,
+                    volume,
+                    sizeDiff: sortedBoxDims.map((d, i) => d - productSorted[i]).reduce((a, b) => a + b, 0)
+                };
+            }).filter(b => b.fits)
+              .sort((a, b) => a.volume - b.volume)
+              .slice(0, 5);
+
+            // 显示结果
+            displayResults(suitableBoxes, product);
+        }
+
+        function displayResults(results, product) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (results.length === 0) {
+                resultsDiv.innerHTML = `<div class="warning">没有找到合适箱型，建议联系客服定制（商品尺寸：${product.join('×')}mm）</div>`;
+                return;
+            }
+
+            resultsDiv.innerHTML += `<h3>找到${results.length}个合适箱型：</h3>`;
+            
+            results.forEach((box, index) => {
+                const isBest = index === 0;
+                const dimensionHTML = box.originalDimensions
+                    .map(d => isBest ? `<span style="color: red; font-weight: bold;">${d}</span>` : d)
+                    .join('×');
+
+                const boxElement = document.createElement('div');
+                boxElement.className = 'result-item';
+                boxElement.innerHTML = `
+                    <div><strong>推荐${index + 1}：${box.name}</strong></div>
+                    <div class="dimension">尺寸：${dimensionHTML}mm</div>
+                    <div class="success">有现货，可立即发货</div>
+                    <div>空间余量：${box.sizeDiff}mm³</div>
+                `;
+                resultsDiv.appendChild(boxElement);
+            });
+        }
+
+        function showError(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="warning">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
